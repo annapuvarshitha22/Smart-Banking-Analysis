@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Credit Cards</h1>
+
+<div class="card">
+    <h3>Issue a New Card</h3>
+    <form class="inline" method="POST">
+        <input type="number" step="0.01" name="credit_limit" placeholder="Credit limit" required>
+        <button type="submit">Issue Card</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Your Cards</h3>
+    {% if cards %}
+    {% for c in cards %}
+    <div class="card" style="background: var(--bg-main);">
+        <p><strong>**** **** **** {{ c.card_number[-4:] }}</strong></p>
+        <p>Balance: ₹{{ "%.2f"|format(c.balance) }} / Limit: ₹{{ "%.2f"|format(c.credit_limit) }}</p>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill {% if c.balance >= c.credit_limit * 0.9 %}over{% endif %}"
+                 style="width: {{ (c.balance / c.credit_limit * 100) if c.credit_limit else 0 }}%;"></div>
+        </div>
+        <form class="inline" method="POST" action="{{ url_for('charge_card', card_id=c.id) }}">
+            <input type="number" step="0.01" name="amount" placeholder="Charge amount" required>
+            <button type="submit" class="secondary">Charge</button>
+        </form>
+        <form class="inline" method="POST" action="{{ url_for('pay_card', card_id=c.id) }}">
+            <input type="number" step="0.01" name="amount" placeholder="Payment amount" required>
+            <button type="submit">Pay</button>
+        </form>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p>No cards yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

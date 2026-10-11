@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Financial Analysis</h1>
+
+{% if alerts %}
+<div class="card" style="border-color: var(--accent-orange);">
+    <h3>⚠ Spending Alerts</h3>
+    {% for a in alerts %}
+    <p>You've spent {{ "%.0f"|format(a.pct) }}% of your <strong>{{ a.category }}</strong> budget this month.</p>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="card-gradient">
+    <div class="ring-row">
+        <div class="ring-wrap" style="--pct: {{ overall_pct }};">
+            <div class="ring"></div>
+            <div class="ring-inner">
+                <div class="ring-value">{{ overall_pct|round|int }}%</div>
+                <div class="ring-label">USED</div>
+            </div>
+        </div>
+        <div>
+            <div style="font-size:24px; font-weight:800;">₹{{ "{:,.0f}".format(total_spent) }}</div>
+            <div class="stat-label">of ₹{{ "{:,.0f}".format(total_budget) }} monthly plan</div>
+            <div class="on-track">{% if on_track %}✓ On track this month{% else %}⚠ Over plan this month{% endif %}</div>
+        </div>
+    </div>
+
+    {% for b in budget_progress %}
+    <div class="linear-bar-row">
+        <div class="label-row">
+            <span>{{ b.category|title }}</span>
+            <span>{{ b.pct|round|int }}%</span>
+        </div>
+        <div class="linear-bar-bg">
+            <div class="linear-bar-fill" style="width: {{ b.pct }}%;"></div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <form class="inline" method="POST" action="{{ url_for('set_budget') }}">
+        <input type="text" name="category" placeholder="Category (e.g. food)" required>
+        <input type="number" step="0.01" name="amount" placeholder="Budget amount" required>
+        <button type="submit">Set Budget</button>
+    </form>
+</div>
+
+<div class="card-row">
+    <div class="card-gradient" style="flex: 1; min-width: 300px;">
+        <h3>Spending analysis</h3>
+        <p class="stat-label">Where your rupees went this month</p>
+        <div class="donut-wrap">
+            <div style="position: relative; width: 150px; height: 150px;">
+                <canvas id="spendChart" width="150" height="150"></canvas>
+                <div class="donut-total" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);">
+                    <div class="amount">₹{{ "{:,.0f}".format(total_spent) }}</div>
+                    <div class="label">TOTAL</div>
+                </div>
+            </div>
+            <ul class="legend-list">
+                {% set colors = ['#38bdf8','#60a5fa','#93c5fd','#2dd4bf','#a78bfa','#f472b6'] %}
+                {% for c in category_breakdown %}
+                <li>
+                    <span><span class="legend-dot" style="background: {{ colors[loop.index0 % colors|length] }};"></span>{{ c.category|title }}</span>
+                    <span>{{ (c.total / total_spent * 100)|round|int if total_spent > 0 else 0 }}%</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% if top_category %}
+        <div class="insight-box">
+            <span>💡</span>
+            <span><strong>{{ top_category|title }}</strong> is your top spending category this period.</span>
+        </div>
+        {% endif %}
+        <p style="margin-top: 14px;"><a href="{{ url_for('export_csv') }}">⬇ Export CSV</a></p>
+    </div>
+
+    <div class="card-gradient" style="flex: 1; min-width: 260px;">
+        <h3>Next month forecast</h3>
+        <p class="stat-label">Prediction from this month's activity</p>
+        <p class="stat-label" style="margin-top: 16px;">ESTIMATED SPENDING</p>
+        <div class="forecast-amount">₹{{ "{:,.0f}".format(forecast_next_month) }}<span class="forecast-badge">+6%</span></div>
+        <div class="forecast-mini-row">
+            <div class="forecast-mini">
+                <div class="mini-label">This month</div>
+                <div class="mini-value">₹{{ "{:,.0f}".format(total_spent) }}</div>
+            </div>
+            <div class="forecast-mini">
+                <div class="mini-label">Expected</div>
+                <div class="mini-value">₹{{ "{:,.0f}".format(forecast_next_month) }}</div>
+            </div>
+        </div>
+        <div class="insight-box">
+            <span>❔</span>
+            <span>If you keep the same pattern, your top-category spending may rise. Consider setting a cap before next month begins.</span>
+        </div>
+    </div>
+
+    <div class="card-highlight" style="flex: 1; min-width: 240px;">
+        <p style="font-size: 11px; letter-spacing: 1px; opacity: 0.85;">FINANCIAL HEALTH</p>
+        <h2 style="margin-top: 4px;">{{ health_label }}</h2>
+        <div class="score-badge-wrap">
+            <div class="score-badge">{{ health_score }}</div>
+        </div>
+        <p style="font-size: 14px;">{{ health_msg }}</p>
+        <div class="health-check-row">
+            {% if savings_rate >= 20 %}✓ Savings rate is above your 20% goal{% else %}○ Savings rate is below the 20% goal{% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const spendCtx = document.getElementById('spendChart');
+if (spendCtx) {
+    new Chart(spendCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ chart_labels|tojson }},
+            datasets: [{
+                data: {{ chart_values|tojson }},
+                backgroundColor: ['#38bdf8','#60a5fa','#93c5fd','#2dd4bf','#a78bfa','#f472b6'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            cutout: '70%'
+        }
+    });
+}
+</script>
+{% endblock %}

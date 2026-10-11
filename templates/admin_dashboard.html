@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Admin Dashboard</h1>
+
+<div class="card-row">
+    <div class="card"><div class="stat-value">{{ total_customers }}</div><div class="stat-label">Total customers</div></div>
+    <div class="card"><div class="stat-value">₹{{ "%.0f"|format(total_balance) }}</div><div class="stat-label">Total balance (bank-wide)</div></div>
+    <div class="card"><div class="stat-value">{{ pending_loans }}</div><div class="stat-label">Pending loan applications</div></div>
+    <div class="card"><div class="stat-value">{{ unresolved_alerts }}</div><div class="stat-label">Unresolved fraud alerts</div></div>
+</div>
+
+{% if chart_base64 %}
+<div class="card">
+    <h3>Bank-Wide Spending by Category</h3>
+    <img src="data:image/png;base64,{{ chart_base64 }}" alt="Spending chart" style="max-width: 100%; border-radius: 8px;">
+</div>
+{% endif %}
+
+<div class="card">
+    <h3>Customers</h3>
+    <table>
+        <tr><th>Name</th><th>Phone</th><th>Accounts</th></tr>
+        {% for c in customers %}
+        <tr><td>{{ c.full_name }}</td><td>{{ c.phone or "—" }}</td><td>{{ c.accounts|length }}</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="card">
+    <h3>Loan Applications</h3>
+    {% if all_loans %}
+    <table>
+        <tr><th>Customer</th><th>Amount</th><th>Credit score</th><th>Suggestion</th><th>Status</th><th>Action</th></tr>
+        {% for l in all_loans %}
+        {% set rec = loan_recommendations[l.id] %}
+        <tr>
+            <td>{{ l.customer.full_name }}</td>
+            <td>₹{{ "%.2f"|format(l.amount) }}</td>
+            <td>{{ rec.score }}</td>
+            <td><strong>{{ rec.label }}</strong><br><small>{{ rec.reason }}</small></td>
+            <td><span class="badge badge-{{ l.status }}">{{ l.status }}</span></td>
+            <td>
+                {% if l.status == "pending" %}
+                <form class="inline" method="POST" action="{{ url_for('update_loan_status', loan_id=l.id) }}">
+                    <button type="submit" name="status" value="approved">Approve</button>
+                    <button type="submit" name="status" value="rejected" class="danger">Reject</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No loan applications yet.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Fraud Alerts (Unresolved)</h3>
+    {% if fraud_alerts %}
+    <table>
+        <tr><th>Reason</th><th>Severity</th><th>Date</th><th>Action</th></tr>
+        {% for a in fraud_alerts %}
+        <tr>
+            <td>{{ a.reason }}</td>
+            <td><span class="badge badge-{{ a.severity }}">{{ a.severity }}</span></td>
+            <td>{{ a.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+                <form class="inline" method="POST" action="{{ url_for('resolve_alert', alert_id=a.id) }}">
+                    <button type="submit">Resolve</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No unresolved fraud alerts.</p>
+    {% endif %}
+</div>
+{% endblock %}

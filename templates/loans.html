@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Loans</h1>
+
+<div class="card">
+    <p class="stat-label">Your mock credit score</p>
+    <div class="stat-value">{{ credit_score }}</div>
+</div>
+
+<div class="card">
+    <h3>Apply for a Loan</h3>
+    <form class="inline" method="POST">
+        <input type="number" step="0.01" name="amount" placeholder="Amount" required>
+        <input type="number" step="0.01" name="interest_rate" placeholder="Interest rate %" required>
+        <input type="number" name="term_months" placeholder="Term (months)" required>
+        <button type="submit">Apply</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Your Loans</h3>
+    {% if loans %}
+    <table>
+        <tr><th>Amount</th><th>Rate</th><th>Term</th><th>Status</th><th>Repaid</th><th></th></tr>
+        {% for l in loans %}
+        <tr>
+            <td>₹{{ "%.2f"|format(l.amount) }}</td>
+            <td>{{ l.interest_rate }}%</td>
+            <td>{{ l.term_months }} mo</td>
+            <td><span class="badge badge-{{ l.status }}">{{ l.status }}</span></td>
+            <td>₹{{ "%.2f"|format(l.amount_repaid) }}</td>
+            <td>
+                {% if l.status == "approved" %}
+                <form class="inline" method="POST" action="{{ url_for('repay_loan', loan_id=l.id) }}">
+                    <input type="number" step="0.01" name="amount" placeholder="Repay amount" required>
+                    <button type="submit">Repay</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No loan applications yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
