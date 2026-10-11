@@ -417,6 +417,10 @@ def analysis():
     chart_labels = [c["category"] for c in category_breakdown]
     chart_values = [c["total"] for c in category_breakdown]
 
+    # --- Biggest transaction highlight ---
+    spending_txns = [t for t in txns if t.type in ("withdrawal", "transfer_out")]
+    biggest_txn = max(spending_txns, key=lambda t: t.amount) if spending_txns else None
+
     return render_template(
         "analysis.html",
         category_breakdown=category_breakdown,
@@ -436,6 +440,7 @@ def analysis():
         savings_rate=savings_rate,
         budget_progress=budget_progress,
         alerts=alerts,
+        biggest_txn=biggest_txn,
     )
 
 

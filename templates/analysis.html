@@ -132,4 +132,17 @@ if (spendCtx) {
     });
 }
 </script>
+<div class="card">
+    <h3>Biggest transaction</h3>
+    {% if biggest_txn %}
+    <div class="stat-value">₹{{ "%.2f"|format(biggest_txn.amount) }}</div>
+    <div class="stat-label">
+        {{ (biggest_txn.category or "general")|title }} ·
+        {{ biggest_txn.type|replace("_", " ") }} ·
+        {{ biggest_txn.timestamp.strftime("%d %b %Y, %H:%M") }}
+    </div>
+    {% else %}
+    <p>No spending yet.</p>
+    {% endif %}
+</div>
 {% endblock %}
