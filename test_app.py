@@ -310,3 +310,68 @@ def test_card_payment_reduces_balance(client):
     client.post(f"/credit-cards/{card_id}/pay", data={"amount": "250"})
     db.session.expire_all()
     assert db.session.get(CreditCard, card_id).balance == 350.0
+
+    # ======================================================
+# VALIDATION TESTS
+# ======================================================
+
+def test_negative_loan_amount_is_rejected(client):
+    signup_and_login(client)
+    client.post("/loans", data={"amount": "-100", "interest_rate": "8", "term_months": "12"})
+    db.session.expire_all()
+    assert Loan.query.count() == 0
+
+
+def test_loan_with_zero_term_is_rejected(client):
+    signup_and_login(client)
+    client.post("/loans", data={"amount": "1000", "interest_rate": "8", "term_months": "0"})
+    db.session.expire_all()
+    assert Loan.query.count() == 0
+
+
+def test_cannot_repay_more_than_remaining(client):
+    signup_and_login(client)
+    client.post("/loans", data={"amount": "1000", "interest_rate": "8", "term_months": "12"})
+    loan_id = first_id(Loan)
+    db.session.get(Loan, loan_id).status = "approved"
+    db.session.commit()
+    client.post(f"/loans/{loan_id}/repay", data={"amount": "1500"})
+    db.session.expire_all()
+    assert db.session.get(Loan, loan_id).amount_repaid == 0.0
+
+
+def test_negative_repayment_is_rejected(client):
+    signup_and_login(client)
+    client.post("/loans", data={"amount": "1000", "interest_rate": "8", "term_months": "12"})
+    loan_id = first_id(Loan)
+    db.session.get(Loan, loan_id).status = "approved"
+    db.session.commit()
+    client.post(f"/loans/{loan_id}/repay", data={"amount": "-200"})
+    db.session.expire_all()
+    assert db.session.get(Loan, loan_id).amount_repaid == 0.0
+
+
+def test_card_with_non_positive_limit_is_rejected(client):
+    signup_and_login(client)
+    client.post("/credit-cards", data={"credit_limit": "-500"})
+    db.session.expire_all()
+    assert CreditCard.query.count() == 0
+
+
+def test_negative_card_charge_is_rejected(client):
+    signup_and_login(client)
+    client.post("/credit-cards", data={"credit_limit": "1000"})
+    card_id = first_id(CreditCard)
+    client.post(f"/credit-cards/{card_id}/charge", data={"amount": "-300"})
+    db.session.expire_all()
+    assert db.session.get(CreditCard, card_id).balance == 0.0
+
+
+def test_negative_card_payment_is_rejected(client):
+    signup_and_login(client)
+    client.post("/credit-cards", data={"credit_limit": "1000"})
+    card_id = first_id(CreditCard)
+    client.post(f"/credit-cards/{card_id}/charge", data={"amount": "200"})
+    client.post(f"/credit-cards/{card_id}/pay", data={"amount": "-100"})
+    db.session.expire_all()
+    assert db.session.get(CreditCard, card_id).balance == 200.0
