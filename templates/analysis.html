@@ -145,4 +145,19 @@ if (spendCtx) {
     <p>No spending yet.</p>
     {% endif %}
 </div>
+<div class="card">
+    <h3>This month vs last month</h3>
+    <div class="stat-value">₹{{ "%.2f"|format(spend_this_month) }}</div>
+    <div class="stat-label">spent this month</div>
+    <p>Last month: ₹{{ "%.2f"|format(spend_last_month) }}</p>
+    {% if month_change_pct is none %}
+    <p>No spending last month to compare with.</p>
+    {% elif month_change_pct > 0 %}
+    <p>▲ {{ month_change_pct }}% more than last month</p>
+    {% elif month_change_pct < 0 %}
+    <p>▼ {{ month_change_pct|abs }}% less than last month</p>
+    {% else %}
+    <p>Same as last month</p>
+    {% endif %}
+</div>
 {% endblock %}

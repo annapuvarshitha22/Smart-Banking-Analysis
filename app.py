@@ -421,6 +421,18 @@ def analysis():
     spending_txns = [t for t in txns if t.type in ("withdrawal", "transfer_out")]
     biggest_txn = max(spending_txns, key=lambda t: t.amount) if spending_txns else None
 
+    # --- This month vs last month ---
+    now = datetime.utcnow()
+    this_month_key = (now.year, now.month)
+    last_month_key = (now.year - 1, 12) if now.month == 1 else (now.year, now.month - 1)
+
+    spend_this_month = sum(t.amount for t in spending_txns if (t.timestamp.year, t.timestamp.month) == this_month_key)
+    spend_last_month = sum(t.amount for t in spending_txns if (t.timestamp.year, t.timestamp.month) == last_month_key)
+    if spend_last_month > 0:
+        month_change_pct = round((spend_this_month - spend_last_month) / spend_last_month * 100, 1)
+    else:
+        month_change_pct = None
+
     return render_template(
         "analysis.html",
         category_breakdown=category_breakdown,
@@ -441,6 +453,9 @@ def analysis():
         budget_progress=budget_progress,
         alerts=alerts,
         biggest_txn=biggest_txn,
+        spend_this_month=spend_this_month,
+        spend_last_month=spend_last_month,
+        month_change_pct=month_change_pct,
     )
 
 
