@@ -2,7 +2,7 @@ import os
 import csv
 import io
 import base64
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pandas as pd
 import numpy as np
@@ -249,11 +249,17 @@ def transfer():
 def loans():
     customer = current_user.customer
     if request.method == "POST":
+        amount = float(request.form["amount"])
+        interest_rate = float(request.form["interest_rate"])
+        term_months = int(request.form["term_months"])
+        if amount <= 0 or interest_rate < 0 or term_months <= 0:
+            flash("Enter a positive amount, a valid interest rate and a term.", "error")
+            return redirect(url_for("loans"))
         loan = Loan(
             customer_id=customer.id,
-            amount=float(request.form["amount"]),
-            interest_rate=float(request.form["interest_rate"]),
-            term_months=int(request.form["term_months"]),
+            amount=amount,
+            interest_rate=interest_rate,
+            term_months=term_months,
         )
         db.session.add(loan)
         db.session.commit()
@@ -276,7 +282,15 @@ def repay_loan(loan_id):
         return redirect(url_for("loans"))
 
     amount = float(request.form["amount"])
+    remaining = loan.amount - loan.amount_repaid
+    if amount <= 0:
+        flash("Repayment must be positive.", "error")
+        return redirect(url_for("loans"))
+    if amount > remaining:
+        flash(f"Repayment is more than the remaining ₹{remaining:.2f}.", "error")
+        return redirect(url_for("loans"))
     loan.amount_repaid += amount
+    
     if loan.amount_repaid >= loan.amount:
         loan.status = "closed"
     db.session.commit()
@@ -289,7 +303,11 @@ def repay_loan(loan_id):
 def credit_cards():
     customer = current_user.customer
     if request.method == "POST":
-        card = CreditCard(customer_id=customer.id, credit_limit=float(request.form["credit_limit"]))
+        credit_limit = float(request.form["credit_limit"])
+        if credit_limit <= 0:
+            flash("Credit limit must be positive.", "error")
+            return redirect(url_for("credit_cards"))
+        card = CreditCard(customer_id=customer.id, credit_limit=credit_limit)
         db.session.add(card)
         db.session.commit()
         flash("Credit card issued.", "success")
@@ -308,7 +326,9 @@ def charge_card(card_id):
         return redirect(url_for("credit_cards"))
 
     amount = float(request.form["amount"])
-    if card.balance + amount > card.credit_limit:
+    if amount <= 0:
+        flash("Amount must be positive.", "error")
+    elif card.balance + amount > card.credit_limit:
         flash("Charge would exceed credit limit.", "error")
     else:
         card.balance += amount
@@ -326,6 +346,9 @@ def pay_card(card_id):
         return redirect(url_for("credit_cards"))
 
     amount = float(request.form["amount"])
+    if amount <= 0:
+        flash("Amount must be positive.", "error")
+        return redirect(url_for("credit_cards"))
     card.balance = max(0.0, card.balance - amount)
     db.session.commit()
     flash(f"Paid ₹{amount:.2f} towards card.", "success")
@@ -422,7 +445,7 @@ def analysis():
     biggest_txn = max(spending_txns, key=lambda t: t.amount) if spending_txns else None
 
     # --- This month vs last month ---
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     this_month_key = (now.year, now.month)
     last_month_key = (now.year - 1, 12) if now.month == 1 else (now.year, now.month - 1)
 
